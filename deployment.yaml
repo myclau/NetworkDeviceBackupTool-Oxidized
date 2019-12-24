@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oxidized
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oxidized
+  namespace: oxidized
+spec:
+  selector:
+    matchLabels:
+      app: oxidized
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: oxidized
+    spec:
+      containers:
+      - name: oxidized-app
+        image: ${CICD_REGISTRY}/oxidized/docker-image:v1.0.${CICD_EXECUTION_SEQUENCE}
+        env:
+        - name: oxidized_git_username
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: oxidized-git-login
+        - name: oxidized_git_password
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: oxidized-git-login
+        volumeMounts:
+          - mountPath: /root/.config/oxidized/db
+            name: vol1
+            readOnly: true
+      - name: ldap-login
+        image: ${CICD_REGISTRY}/oxidized/nginx-ldap-login:v1.0.${CICD_EXECUTION_SEQUENCE}
+        env:
+        - name: NGINX_AUTH_LDAP_URL
+          valueFrom:
+            secretKeyRef:
+              key: url
+              name: ldap
+        - name: NGINX_AUTH_LDAP_BINDDN
+          valueFrom:
+            secretKeyRef:
+              key: bind
+              name: ldap
+        - name: NGINX_AUTH_LDAP_BINDPW
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: ldap
+
+      volumes:
+      - name: vol1
+        secret:
+          defaultMode: 256
+          optional: false
+          secretName: device
+
+---
+# create ingress to let you have xip.io url for simple test
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-oxidized
+  namespace: oxidized
+
+spec:
+  rules:
+  - host: oxidized.abc.com
+    http:
+      paths:
+      - backend:
+          serviceName: oxidized-login
+          servicePort: 80
+
+
+---
+# this service is for ingress to access the app (it point to workload)
+apiVersion: v1
+kind: Service
+metadata:
+  name: oxidized-service
+  namespace: oxidized
+
+spec:
+  selector:
+    app: oxidized
+  ports:
+  - port: 8888
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: oxidized-login
+  namespace: oxidized
+
+spec:
+  selector:
+    app: oxidized
+  ports:
+  - port: 80
+

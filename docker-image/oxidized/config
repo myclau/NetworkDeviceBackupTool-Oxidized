@@ -1,0 +1,76 @@
+ername: nil
+password: password
+model: ios
+resolve_dns: false
+interval: 86400
+use_syslog: false
+debug: true
+threads: 30
+timeout: 20
+retries: 3
+prompt: !ruby/regexp /[#>]/
+rest: 0.0.0.0:8888
+next_adds_job: false
+environment:
+    CONFIG_RELOAD_INTERVAL: 600
+vars: {}
+  #remove_secret: true
+groups: {}
+models: {}
+log: /root/.config/oxidized/log
+pid: "/root/.config/oxidized/pid"
+crash:
+  directory: "/root/.config/oxidized/crashes"
+  hostnames: false
+stats:
+  history_size: 10
+input:
+  default: telnet, ssh
+  debug: true
+  ssh:
+    secure: false
+  ftp:
+    passive: true
+  utf8_encoded: true
+#output:
+#  default: file
+#  file:
+#    directory: "/root/.config/oxidized/configs"
+output:
+  default: git
+  git:
+    user: oxidized
+    email: oxidized@abc.com
+    repo: "/var/lib/oxidized/git-repos/default.git"
+hooks:
+  verify_git:
+    type: exec
+    events: [node_success]
+    cmd: "echo ${OX_NODE_GROUP} && bash /root/.config/oxidized/hookscript/git_ver.sh \"${OX_NODE_GROUP}\""
+  push_to_remote:
+    type: githubrepo
+    events: [post_store]
+    remote_repo:
+      HK-IDC1-switchs: https://gitlab.abc.com/Infrastructure/network-device-backup/HK/IDC1/switchs.git
+      HK-IDC1-routers: https://gitlab.abc.com/Infrastructure/network-device-backup/HK/IDC1/routers.git
+      HK-IDC1-firewalls: https://gitlab.abc.com/Infrastructure/network-device-backup/HK/IDC1/firewalls.git
+    username: "${oxidized_git_username}"
+    password: "${oxidized_git_password}"
+source:
+  default: csv
+  csv:
+    file: "/root/.config/oxidized/db/device.db"
+    delimiter: !ruby/regexp /:/
+    map:
+      name: 0
+      ip: 1
+      group: 2
+      model: 3
+      username: 4
+      password: 5
+    vars_map:
+      enable: 6
+  gpg: false
+model_map:
+  juniper: junos
+  cisco: ios
